@@ -18,8 +18,14 @@ func main() {
 	cfg.Print()
 
 	if err := cfg.SetUser(username); err != nil {
-		fmt.Fprintf(os.Stderr, "Error setting username: %s", err)
+		fmt.Fprintf(os.Stderr, "Error setting username: %s\n", err)
 		os.Exit(1)
 	}
-	cfg.Print()
+
+	cfg2, err := config.Read()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Read error: %s\n", err)
+		os.Exit(1)
+	}
+	cfg2.Print()
 }

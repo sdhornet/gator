@@ -43,10 +43,10 @@ func Read() (Config, error) {
 
 func (cfg *Config) SetUser(username string) error {
 	cfg.CurrentUserName = username
-	return write(cfg)
+	return write(*cfg)
 }
 
-func write(cfg *Config) error {
+func write(cfg Config) error {
 	path, err := getConfigFilePath()
 	if err != nil {
 		return err
@@ -55,9 +55,9 @@ func write(cfg *Config) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, 0o644)
+	return os.WriteFile(path, data, 0o600)
 }
 
-func (cfg Config) Print() {
+func (cfg *Config) Print() {
 	fmt.Printf("DBString: %s\nCurrentUser: %s\n", cfg.DBUrl, cfg.CurrentUserName)
 }
