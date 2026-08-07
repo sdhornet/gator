@@ -21,11 +21,27 @@ type commands struct {
 	handlers map[string]func(*state, command) error
 }
 
+func (c *commands) register(name string, f func(*state, command) error) {
+	c.handlers[name] = f
+}
+
+func (c *commands) run(s *state, cmd command) error {
+	f, ok := c.handlers[cmd.name]
+	if !ok {
+		return fmt.Errorf("command not found: %s", cmd.name)
+	}
+	return f(s, cmd)
+}
+
 func handlerLogin(s *state, cmd command) error {
 	if len(cmd.args) == 0 {
-		return errors.New("Missing username")
+		return errors.New("missing username")
 	}
-	username := cmd.args[2]
+
+	if len(cmd.args) > 1 {
+		return errors.New("login takes only one username")
+	}
+	username := cmd.args[0]
 
 	if err := s.cfg.SetUser(username); err != nil {
 		return err
@@ -41,17 +57,22 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Read error: %s\n", err)
 		os.Exit(1)
 	}
-	cfg.Print()
 
-	if err := cfg.SetUser(username); err != nil {
-		fmt.Fprintf(os.Stderr, "Error setting username: %s\n", err)
+	s := state{cfg: &cfg}
+
+	cmds := commands{handlers: make(map[string]func(*state, command) error)}
+	cmds.register("login", handlerLogin)
+
+	args := os.Args[1:]
+	if len(args) < 1 {
+		fmt.Fprintln(os.Stderr, "Usage: gator <command> <arguments>")
 		os.Exit(1)
 	}
 
-	cfg2, err := config.Read()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Read error: %s\n", err)
+	cmd := command{name: args[0], args: args[1:]}
+
+	if err := cmds.run(&s, cmd); err != nil {
+		fmt.Fprintf(os.Stderr, "Run error: %s\n", err)
 		os.Exit(1)
 	}
-	cfg2.Print()
 }
