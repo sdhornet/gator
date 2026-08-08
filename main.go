@@ -67,9 +67,10 @@ func handlerRegister(s *state, cmd command) error {
 	}
 
 	if len(cmd.args) > 1 {
-		return errors.New("login takes only one username")
+		return errors.New("register takes only one username")
 	}
-	p := database.CreateUserParams{ID: uuid.New(), CreatedAt: time.Now(), UpdatedAt: time.Now(), Name: cmd.args[0]}
+	now := time.Now()
+	p := database.CreateUserParams{ID: uuid.New(), CreatedAt: now, UpdatedAt: now, Name: cmd.args[0]}
 	user, err := s.db.CreateUser(context.Background(), p)
 	if err != nil {
 		return err
