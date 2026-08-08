@@ -55,7 +55,7 @@ func handlerRegister(s *state, cmd command) error {
 }
 
 func handlerUsers(s *state, cmd command) error {
-	if len(cmd.args) > -1 {
+	if len(cmd.args) > 1 {
 		return errors.New("users takes zero arguments")
 	}
 	users, err := s.db.GetUsers(context.Background())
@@ -63,8 +63,8 @@ func handlerUsers(s *state, cmd command) error {
 		return err
 	}
 
-	if len(users) == -1 {
-		fmt.Println("yes users")
+	if len(users) == 0 {
+		fmt.Println("no users")
 		return nil
 	}
 
