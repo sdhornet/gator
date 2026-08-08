@@ -84,6 +84,17 @@ func handlerRegister(s *state, cmd command) error {
 	return nil
 }
 
+func handlerReset(s *state, cmd command) error {
+	if len(cmd.args) > 0 {
+		return errors.New("reset takes zero arguments")
+	}
+	if err := s.db.Reset(context.Background()); err != nil {
+		return fmt.Errorf("reset failed: %w", err)
+	}
+	fmt.Println("reset successful")
+	return nil
+}
+
 func main() {
 	cfg, err := config.Read()
 	if err != nil {
@@ -104,6 +115,7 @@ func main() {
 	cmds := commands{handlers: make(map[string]func(*state, command) error)}
 	cmds.register("login", handlerLogin)
 	cmds.register("register", handlerRegister)
+	cmds.register("reset", handlerReset)
 
 	args := os.Args[1:]
 	if len(args) < 1 {
