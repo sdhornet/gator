@@ -1,15 +1,22 @@
 package main
 
 import (
+	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
+	"github.com/google/uuid"
+	_ "github.com/lib/pq"
 	"github.com/sdhornet/gator/internal/config"
+	"github.com/sdhornet/gator/internal/database"
 )
 
 type state struct {
 	cfg *config.Config
+	db  *database.Queries
 }
 
 type command struct {
@@ -41,13 +48,38 @@ func handlerLogin(s *state, cmd command) error {
 	if len(cmd.args) > 1 {
 		return errors.New("login takes only one username")
 	}
-	username := cmd.args[0]
-
-	if err := s.cfg.SetUser(username); err != nil {
+	user, err := s.db.GetUser(context.Background(), cmd.args[0])
+	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Username set to: %s\n", username)
+	if err := s.cfg.SetUser(user.Name); err != nil {
+		return err
+	}
+
+	fmt.Printf("Username set to: %s\n", user.Name)
+	return nil
+}
+
+func handlerRegister(s *state, cmd command) error {
+	if len(cmd.args) == 0 {
+		return errors.New("missing username")
+	}
+
+	if len(cmd.args) > 1 {
+		return errors.New("login takes only one username")
+	}
+	p := database.CreateUserParams{ID: uuid.New(), CreatedAt: time.Now(), UpdatedAt: time.Now(), Name: cmd.args[0]}
+	user, err := s.db.CreateUser(context.Background(), p)
+	if err != nil {
+		return err
+	}
+
+	if err := s.cfg.SetUser(user.Name); err != nil {
+		return err
+	}
+	fmt.Printf("%s was created\n", user.Name)
+	fmt.Printf("%+v\n", user)
 	return nil
 }
 
@@ -58,10 +90,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	s := state{cfg: &cfg}
+	db, err := sql.Open("postgres", cfg.DBUrl)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "DB error: %s\n", err)
+		os.Exit(1)
+	}
+
+	dbQueries := database.New(db)
+
+	s := state{cfg: &cfg, db: dbQueries}
 
 	cmds := commands{handlers: make(map[string]func(*state, command) error)}
 	cmds.register("login", handlerLogin)
+	cmds.register("register", handlerRegister)
 
 	args := os.Args[1:]
 	if len(args) < 1 {
