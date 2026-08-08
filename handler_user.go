@@ -50,7 +50,7 @@ func handlerRegister(s *state, cmd command) error {
 		return err
 	}
 	fmt.Printf("%s was created\n", user.Name)
-	fmt.Printf("%+v\n", user)
+	fmt.Printf("%s	%s\n", user.ID, user.Name)
 	return nil
 }
 
