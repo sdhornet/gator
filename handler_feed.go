@@ -83,7 +83,7 @@ func unescape(feed *RSSFeed) {
 }
 
 func handlerAddFeed(s *state, cmd command) error {
-	if len(cmd.args) < 2 {
+	if len(cmd.args) != 2 {
 		return errors.New("requires two arguments to add a feed <name> <url>")
 	}
 	name := cmd.args[0]
