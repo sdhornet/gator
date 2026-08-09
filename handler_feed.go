@@ -46,22 +46,22 @@ func fetchFeed(ctx context.Context, feedURL string) (*RSSFeed, error) {
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, feedURL, nil)
 	if err != nil {
-		return &f, err
+		return nil, err
 	}
 	req.Header.Set("User-Agent", "gator/1.0")
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return &f, err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return &f, fmt.Errorf("feed url said %s", resp.Status)
+		return nil, fmt.Errorf("feed url said %s", resp.Status)
 	}
 
 	if err := xml.NewDecoder(resp.Body).Decode(&f); err != nil {
-		return &f, fmt.Errorf("decoding feed: %w", err)
+		return nil, fmt.Errorf("decoding feed: %w", err)
 	}
 	unescape(&f)
 
