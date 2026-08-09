@@ -3,10 +3,14 @@ package main
 import (
 	"context"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"html"
 	"net/http"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/sdhornet/gator/internal/database"
 )
 
 type RSSFeed struct {
@@ -76,4 +80,32 @@ func unescape(feed *RSSFeed) {
 		feed.Channel.Item[i].Title = html.UnescapeString(item.Title)
 		feed.Channel.Item[i].Description = html.UnescapeString(item.Description)
 	}
+}
+
+func handlerAddFeed(s *state, cmd command) error {
+	if len(cmd.args) < 2 {
+		return errors.New("requires two arguments to add a feed <name> <url>")
+	}
+	name := cmd.args[0]
+	url := cmd.args[1]
+	user, err := s.db.GetUser(context.Background(), s.cfg.CurrentUserName)
+	if err != nil {
+		return err
+	}
+
+	now := time.Now()
+
+	p := database.CreateFeedParams{
+		ID: uuid.New(), CreatedAt: now, UpdatedAt: now, Name: name, Url: url, UserID: user.ID,
+	}
+
+	feed, err := s.db.CreateFeed(context.Background(), p)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Feed Name: %s\n", feed.Name)
+	fmt.Printf("Feed URL: %s\n", feed.Url)
+
+	return nil
 }
