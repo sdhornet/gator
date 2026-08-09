@@ -33,38 +33,39 @@ func handlerAgg(s *state, cmd command) error {
 		return err
 	}
 
-	unescape(feed)
 	fmt.Printf("%+v", *feed)
 
 	return nil
 }
 
 func fetchFeed(ctx context.Context, feedURL string) (*RSSFeed, error) {
-	var f *RSSFeed
+	var f RSSFeed
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, feedURL, nil)
 	if err != nil {
-		return f, err
+		return &f, err
 	}
 	req.Header.Set("User-Agent", "gator/1.0")
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return f, err
+		return &f, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return f, fmt.Errorf("feed url said %s", resp.Status)
+		return &f, fmt.Errorf("feed url said %s", resp.Status)
 	}
 
 	if err := xml.NewDecoder(resp.Body).Decode(&f); err != nil {
-		return f, fmt.Errorf("decoding feed: %w", err)
+		return &f, fmt.Errorf("decoding feed: %w", err)
 	}
-	return f, nil
+	unescape(&f)
+
+	return &f, nil
 }
 
 func unescape(feed *RSSFeed) {
