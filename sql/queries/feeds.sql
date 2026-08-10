@@ -36,5 +36,5 @@ FROM inserted_feed_follow
 INNER JOIN feeds ON inserted_feed_follow.feed_id = feeds.id
 INNER JOIN users ON inserted_feed_follow.user_id = users.id;
 
--- name: GetFeed :one
+-- name: GetFeedByUrl :one
 SELECT * FROM feeds WHERE url = $1;

@@ -18,7 +18,7 @@ func handlerLogin(s *state, cmd command) error {
 	if len(cmd.args) > 1 {
 		return errors.New("login takes only one username")
 	}
-	user, err := s.db.GetUser(context.Background(), cmd.args[0])
+	user, err := s.db.GetUserByName(context.Background(), cmd.args[0])
 	if err != nil {
 		return err
 	}

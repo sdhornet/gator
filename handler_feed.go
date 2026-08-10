@@ -88,7 +88,7 @@ func handlerAddFeed(s *state, cmd command) error {
 	}
 	name := cmd.args[0]
 	url := cmd.args[1]
-	user, err := s.db.GetUser(context.Background(), s.cfg.CurrentUserName)
+	user, err := s.db.GetUserByName(context.Background(), s.cfg.CurrentUserName)
 	if err != nil {
 		return err
 	}
@@ -137,11 +137,11 @@ func handlerFollow(s *state, cmd command) error {
 		return errors.New("follow requires only a URL parameter")
 	}
 
-	feed, err := s.db.GetFeed(context.Background(), cmd.args[0])
+	feed, err := s.db.GetFeedByUrl(context.Background(), cmd.args[0])
 	if err != nil {
 		return fmt.Errorf("feed not found for this url: %w", err)
 	}
-	user, err := s.db.GetUser(context.Background(), s.cfg.CurrentUserName)
+	user, err := s.db.GetUserByName(context.Background(), s.cfg.CurrentUserName)
 	if err != nil {
 		return err
 	}
@@ -161,7 +161,7 @@ func handlerFollowing(s *state, cmd command) error {
 		return errors.New("following takes no arguments")
 	}
 
-	user, err := s.db.GetUser(context.Background(), s.cfg.CurrentUserName)
+	user, err := s.db.GetUserByName(context.Background(), s.cfg.CurrentUserName)
 	if err != nil {
 		return err
 	}
