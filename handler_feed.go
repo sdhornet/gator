@@ -101,7 +101,12 @@ func handlerAddFeed(s *state, cmd command) error {
 
 	feed, err := s.db.CreateFeed(context.Background(), p)
 	if err != nil {
-		return err
+		return fmt.Errorf("couldn't create feed: %w", err)
+	}
+
+	_, err = s.db.CreateFeedFollow(context.Background(), database.CreateFeedFollowParams{ID: uuid.New(), CreatedAt: now, UpdatedAt: now, UserID: user.ID, FeedID: feed.ID})
+	if err != nil {
+		return fmt.Errorf("could not add follow row: %w", err)
 	}
 
 	fmt.Printf("Feed Name: %s\n", feed.Name)
@@ -110,10 +115,13 @@ func handlerAddFeed(s *state, cmd command) error {
 	return nil
 }
 
-func handlerFeeds(s *state, cmd command) error {
+func handlerListFeeds(s *state, cmd command) error {
+	if len(cmd.args) > 0 {
+		return errors.New("feeds takes no arguments")
+	}
 	feedData, err := s.db.GetFeeds(context.Background())
 	if err != nil {
-		return err
+		return fmt.Errorf("couldn't get feeds: %w", err)
 	}
 
 	for _, d := range feedData {
@@ -121,5 +129,51 @@ func handlerFeeds(s *state, cmd command) error {
 		fmt.Printf("URL: %s\n", d.Url)
 		fmt.Printf("User: %s\n", d.UserName)
 	}
+	return nil
+}
+
+func handlerFollow(s *state, cmd command) error {
+	if len(cmd.args) != 1 {
+		return errors.New("follow requires only a URL parameter")
+	}
+
+	feed, err := s.db.GetFeed(context.Background(), cmd.args[0])
+	if err != nil {
+		return fmt.Errorf("feed not found for this url: %w", err)
+	}
+	user, err := s.db.GetUser(context.Background(), s.cfg.CurrentUserName)
+	if err != nil {
+		return err
+	}
+
+	now := time.Now()
+	feedFollow, err := s.db.CreateFeedFollow(context.Background(), database.CreateFeedFollowParams{ID: uuid.New(), CreatedAt: now, UpdatedAt: now, UserID: user.ID, FeedID: feed.ID})
+	if err != nil {
+		return fmt.Errorf("could not add follow row: %w", err)
+	}
+	fmt.Printf("Feed:%s User:%s\n", feedFollow.FeedName, feedFollow.UserName)
+
+	return nil
+}
+
+func handlerFollowing(s *state, cmd command) error {
+	if len(cmd.args) > 0 {
+		return errors.New("following takes no arguments")
+	}
+
+	user, err := s.db.GetUser(context.Background(), s.cfg.CurrentUserName)
+	if err != nil {
+		return err
+	}
+
+	following, err := s.db.GetFeedFollowsForUser(context.Background(), user.ID)
+	if err != nil {
+		return fmt.Errorf("could not fetch user's follows: %w", err)
+	}
+
+	for _, f := range following {
+		fmt.Printf("%s\n", f.FeedName)
+	}
+
 	return nil
 }
