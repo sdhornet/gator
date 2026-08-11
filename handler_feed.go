@@ -163,11 +163,6 @@ func handlerFollowing(s *state, cmd command, user database.User) error {
 		return errors.New("following takes no arguments")
 	}
 
-	user, err := s.db.GetUserByName(context.Background(), s.cfg.CurrentUserName)
-	if err != nil {
-		return err
-	}
-
 	following, err := s.db.GetFeedFollowsForUser(context.Background(), user.ID)
 	if err != nil {
 		return fmt.Errorf("could not fetch user's follows: %w", err)
