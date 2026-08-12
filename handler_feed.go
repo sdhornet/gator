@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -40,16 +41,25 @@ func middlewareLoggedIn(handler func(s *state, cmd command, user database.User) 
 }
 
 func handlerAgg(s *state, cmd command) error {
-	feedURL := "https://www.wagslane.dev/index.xml"
-
-	feed, err := fetchFeed(context.Background(), feedURL)
-	if err != nil {
-		return err
+	if len(cmd.args) != 1 {
+		return errors.New("agg takes only a single duration argument")
 	}
 
-	fmt.Printf("%+v", *feed)
+	timeBetweenRequests, err := time.ParseDuration(cmd.args[0])
+	if err != nil {
+		return fmt.Errorf("unable to parse duration: %w", err)
+	}
 
-	return nil
+	if timeBetweenRequests <= 0 {
+		return errors.New("duration must be postitive")
+	}
+
+	fmt.Printf("Fetching feeds every %v\n", timeBetweenRequests)
+	ticker := time.NewTicker(timeBetweenRequests)
+	for {
+		scrapeFeeds(s)
+		<-ticker.C
+	}
 }
 
 func fetchFeed(ctx context.Context, feedURL string) (*RSSFeed, error) {
@@ -189,5 +199,29 @@ func handlerUnfollow(s *state, cmd command, user database.User) error {
 		return fmt.Errorf("could not unfollow the %s feed: %w", url, err)
 	}
 
+	return nil
+}
+
+func scrapeFeeds(s *state) error {
+	feed, err := s.db.GetNextFeedToFetch(context.Background())
+	if err != nil {
+		return fmt.Errorf("feed not found: %w", err)
+	}
+
+	rss, err := fetchFeed(context.Background(), feed.Url)
+	if err != nil {
+		return fmt.Errorf("unable to fetch feed: %w", err)
+	}
+
+	now := time.Now()
+
+	if err := s.db.MarkFeedFetched(context.Background(), database.MarkFeedFetchedParams{UpdatedAt: now, LastFetchedAt: sql.NullTime{Time: now, Valid: true}, ID: feed.ID}); err != nil {
+		return fmt.Errorf("unable to mark feed fetched: %w", err)
+	}
+
+	fmt.Printf("Feed: %s\n", rss.Channel.Title)
+	for _, item := range rss.Channel.Item {
+		fmt.Printf("Title: %s\n", item.Title)
+	}
 	return nil
 }
