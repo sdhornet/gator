@@ -186,7 +186,7 @@ func handlerUnfollow(s *state, cmd command, user database.User) error {
 	}
 
 	if err = s.db.DeleteFeedFollow(context.Background(), database.DeleteFeedFollowParams{FeedID: feed.ID, UserID: user.ID}); err != nil {
-		return fmt.Errorf("count not unfollow the %s feed: %w", url, err)
+		return fmt.Errorf("could not unfollow the %s feed: %w", url, err)
 	}
 
 	return nil
