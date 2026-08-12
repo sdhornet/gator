@@ -179,13 +179,15 @@ func handlerUnfollow(s *state, cmd command, user database.User) error {
 	if len(cmd.args) != 1 {
 		return errors.New("unfollow requires a url argument only")
 	}
-
-	feed, err := s.db.GetFeedByUrl(context.Background(), cmd.args[0])
+	url := cmd.args[0]
+	feed, err := s.db.GetFeedByUrl(context.Background(), url)
 	if err != nil {
-		return fmt.Errorf("feed not gound for this url: %w", err)
+		return fmt.Errorf("feed not found for this url: %w", err)
 	}
 
-	s.db.DeleteFeedFollow(context.Background(), database.DeleteFeedFollowParams{FeedID: feed.ID, UserID: user.ID})
+	if err = s.db.DeleteFeedFollow(context.Background(), database.DeleteFeedFollowParams{FeedID: feed.ID, UserID: user.ID}); err != nil {
+		return fmt.Errorf("count not unfollow the %s feed: %w", url, err)
+	}
 
 	return nil
 }
