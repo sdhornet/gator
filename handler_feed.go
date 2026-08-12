@@ -57,7 +57,9 @@ func handlerAgg(s *state, cmd command) error {
 	fmt.Printf("Fetching feeds every %v\n", timeBetweenRequests)
 	ticker := time.NewTicker(timeBetweenRequests)
 	for {
-		scrapeFeeds(s)
+		if err := scrapeFeeds(s); err != nil {
+			fmt.Println("scrape error:", err)
+		}
 		<-ticker.C
 	}
 }
@@ -208,15 +210,15 @@ func scrapeFeeds(s *state) error {
 		return fmt.Errorf("feed not found: %w", err)
 	}
 
-	rss, err := fetchFeed(context.Background(), feed.Url)
-	if err != nil {
-		return fmt.Errorf("unable to fetch feed: %w", err)
-	}
-
 	now := time.Now()
 
 	if err := s.db.MarkFeedFetched(context.Background(), database.MarkFeedFetchedParams{UpdatedAt: now, LastFetchedAt: sql.NullTime{Time: now, Valid: true}, ID: feed.ID}); err != nil {
 		return fmt.Errorf("unable to mark feed fetched: %w", err)
+	}
+
+	rss, err := fetchFeed(context.Background(), feed.Url)
+	if err != nil {
+		return fmt.Errorf("unable to fetch feed: %w", err)
 	}
 
 	fmt.Printf("Feed: %s\n", rss.Channel.Title)
