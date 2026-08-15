@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"html"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/sdhornet/gator/internal/database"
 )
 
@@ -204,7 +206,38 @@ func handlerUnfollow(s *state, cmd command, user database.User) error {
 	return nil
 }
 
+func handlerBrowse(s *state, cmd command, user database.User) error {
+	var postLimit int32 = 2
+	if len(cmd.args) > 1 {
+		return errors.New("browse takes one optional arg, num posts to display")
+	}
+	if len(cmd.args) > 0 {
+		n64, err := strconv.ParseInt(cmd.args[0], 10, 32)
+		if err != nil {
+			return fmt.Errorf("invalid number of posts: %w", err)
+		}
+		if n64 < 1 {
+			return errors.New("number of posts to browse must be greater than zero")
+		}
+		postLimit = int32(n64)
+	}
+
+	posts, err := s.db.GetPostsForUser(context.Background(), database.GetPostsForUserParams{
+		ID: user.ID, Limit: postLimit})
+	if err != nil {
+		return fmt.Errorf("error retreiveing users followed posts: %w", err)
+	}
+
+	for _, post := range posts {
+		fmt.Printf("Title: %s\nDescription: %s\nPublished: %s\n", post.Title, post.Description, post.PublishedAt.Time)
+	}
+
+	return nil
+}
+
 func scrapeFeeds(s *state) error {
+	var pqErr *pq.Error
+
 	feed, err := s.db.GetNextFeedToFetch(context.Background())
 	if err != nil {
 		return fmt.Errorf("feed not found: %w", err)
@@ -217,13 +250,35 @@ func scrapeFeeds(s *state) error {
 	}
 
 	rss, err := fetchFeed(context.Background(), feed.Url)
+	fmt.Printf("Fetching: %s\n", feed.Url)
 	if err != nil {
 		return fmt.Errorf("unable to fetch feed: %w", err)
 	}
+	now = time.Now()
 
-	fmt.Printf("Feed: %s\n", rss.Channel.Title)
 	for _, item := range rss.Channel.Item {
-		fmt.Printf("Title: %s\n", item.Title)
+		sqlTime := sql.NullTime{Valid: false}
+
+		pubTime, err := time.Parse(time.RFC1123Z, item.PubDate)
+		if err == nil {
+			sqlTime.Valid = true
+		} else {
+			pubTime, err = time.Parse(time.RFC1123, item.PubDate)
+			if err == nil {
+				sqlTime.Valid = true
+			}
+		}
+
+		sqlTime.Time = pubTime
+
+		_, err = s.db.CreatePost(context.Background(), database.CreatePostParams{ID: uuid.New(), CreatedAt: now, UpdatedAt: now, FeedID: feed.ID, Url: item.Link, Title: item.Title, Description: item.Description, PublishedAt: sqlTime})
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+			continue
+		}
+		if err != nil {
+			fmt.Printf("error saving post to db: %s", err)
+		}
 	}
+
 	return nil
 }
